@@ -1,0 +1,2 @@
+deb https://download.tarantool.org/tarantool/release/series-2/ubuntu/ focal main
+deb https://download.tarantool.org/tarantool/modules/ubuntu/ focal main
