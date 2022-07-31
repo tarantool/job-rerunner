@@ -1,9 +1,26 @@
-# Tarantool Workflow Re-Runner
+# Tarantool Workflow Re-runner
 
-THe app is written on Lua and runs on Tarantool
+This service is written in Lua and runs on [Tarantool](https://tarantool.io).
 
-It receives WebHook from GitHub and if it came with "failure" in "conclusion", 
-it sends api call to re-run failed jobs in the workflow.
+It receives [webhooks](https://docs.github.com/en/developers/webhooks-and-events/webhooks/webhook-events-and-payloads#check_run)
+from all completed workflows in a certain GitHub repository.
+If a webhook came with `check_run.conclusion == failure`, 
+the service calls GitHub API to re-run failed jobs in the workflow.
+
+## Adding repositories
+
+To enable restarting workflows in a repository:
+
+1. Add a new webhook in the repository.
+   You should have "Admin" permissions in the repository to do so.
+   Pick "Let me select individual events", then check "Workflow jobs".
+   Set webhook URL to the service endpoint.
+   
+2. Add the bot user to the repository with "Write" permissions.
+   For repos in the [tarantool organization](https://github.com/tarantool),
+   it's the [@TarantoolBot](https://github.com/TarantoolBot).
+   
+The service will now restart all failed workflows up to three times.
 
 ## Deployment
 
