@@ -13,14 +13,17 @@ To enable restarting workflows in a repository:
 
 1. Add a new webhook in the repository.
    You should have "Admin" permissions in the repository to do so.
-   Pick "Let me select individual events", then check "Workflow jobs".
-   Set webhook URL to the service endpoint.
+   
+   * Set "Payload URL" to the service endpoint.
+   * Select "application/json" in the "Content type" dropdown.
+   * Pick "Let me select individual events", then check "Workflow jobs" in the bottom of the page.
+   
    
 2. Add the bot user to the repository with "Write" permissions.
    For repos in the [tarantool organization](https://github.com/tarantool),
    it's the [@TarantoolBot](https://github.com/TarantoolBot).
    
-The service will now restart all failed workflows up to three times.
+The service will now restart all failed workflows in this repository up to three times.
 
 ## Deployment
 
