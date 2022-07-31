@@ -64,3 +64,13 @@ To update the token or change the user which will restart workflows:
     
     Dokku will now deploy a new service instance with the new configuration.
     There shouldn't be any downtime in the deployment.
+    
+## Logging
+
+To read service logs, SSH to the Dokku machine:
+
+```console
+$ ssh user@dokku-machine
+$ sudo su
+# dokku logs job-re-runner --tail
+```
