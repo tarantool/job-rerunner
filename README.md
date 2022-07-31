@@ -33,3 +33,34 @@ plugin enabled to install `apt` dependencies in `apt-*` files.
 Provide the SSH key for access to Dokku in the `SSH_PRIVATE_KEY` secret.
 
 `Procfile` contains the command for running the main process of the application.
+
+## Updating GitHub token
+
+To update the token or change the user which will restart workflows:
+
+1. [Issue a new token](https://github.com/settings/tokens/new) with scopes `repo` and `workflow`.
+2. Add the token to the service config in Dokku:
+
+    ```console
+    $ ssh user@dokku-machine
+    $ sudo su
+    # dokku config job-re-runner
+    BUILDPACK_URL:            https://github.com/maximkulkin/heroku-buildpack-dummy.git
+    DOKKU_APP_RESTORE:        1
+    DOKKU_APP_TYPE:           herokuish
+    DOKKU_LETSENCRYPT_EMAIL:  admin@org
+    DOKKU_PROXY_PORT:         80
+    DOKKU_PROXY_PORT_MAP:     http:80:5000 https:443:5000
+    DOKKU_PROXY_SSL_PORT:     443
+    GITHUB_TOKEN:             <old_token_value>
+    GIT_REV:                  e4da2ec3daf9366236da98b5ba06ecbe4d645365
+
+    # dokku config:set job-re-runner GITHUB_TOKEN=<value>
+    -----> Setting config vars
+       GITHUB_TOKEN:  <value>
+    -----> Restarting app job-re-runner
+    ...
+    ```
+    
+    Dokku will now deploy a new service instance with the new configuration.
+    There shouldn't be any downtime in the deployment.
