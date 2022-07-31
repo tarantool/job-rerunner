@@ -2,9 +2,9 @@
 
 This service is written in Lua and runs on [Tarantool](https://tarantool.io).
 
-It receives [webhooks](https://docs.github.com/en/developers/webhooks-and-events/webhooks/webhook-events-and-payloads#check_run)
-from all completed workflows in a certain GitHub repository.
-If a webhook came with `check_run.conclusion == failure`, 
+It receives webhooks from all completed workflows in a certain GitHub repository.
+If a webhook came with `check_run.conclusion == failure` in the 
+[payload](https://docs.github.com/en/developers/webhooks-and-events/webhooks/webhook-events-and-payloads#check_run), 
 the service calls GitHub API to re-run failed jobs in the workflow.
 
 ## Adding repositories
@@ -24,9 +24,12 @@ The service will now restart all failed workflows up to three times.
 
 ## Deployment
 
-The app is deployed in Dokku using [dummy buildpack](https://github.com/maximkulkin/heroku-buildpack-dummy)
+The app is deployed in [Dokku](https://dokku.com) using the 
+[dummy buildpack](https://github.com/maximkulkin/heroku-buildpack-dummy).
 
-Dokku must have enabled [dokku-apt](https://github.com/dokku-community/dokku-apt)
-plugin for installing apt dependencies in `apt-*` files
+Dokku must have [dokku-apt](https://github.com/dokku-community/dokku-apt)
+plugin enabled to install `apt` dependencies in `apt-*` files.
 
-`Procfile` contains a command for running main process of the application
+Provide the SSH key for access to Dokku in the `SSH_PRIVATE_KEY` secret.
+
+`Procfile` contains the command for running the main process of the application.
