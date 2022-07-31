@@ -3,7 +3,11 @@ name: Deploy to Dokku
 on:
   push:
     branches:
-      - 'master'
+      - '*'
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+      - '.gitignore'
   workflow_dispatch:
 jobs:
   deploy:
