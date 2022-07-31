@@ -3,7 +3,7 @@ name: Deploy to Dokku
 on:
   push:
     branches:
-      - '*'
+      - 'master'
     paths-ignore:
       - 'README.md'
       - 'docs/**'
