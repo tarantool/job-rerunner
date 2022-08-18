@@ -42,9 +42,9 @@ local function needs_restart(job_id)
     return false
 end
 
-local function re_run_failed_jobs(run_id)
+local function re_run_failed_jobs(full_repo, run_id)
     fiber.sleep(5)
-    local url = 'https://api.github.com/repos/tarantool/tarantool/actions/runs/'..run_id..'/rerun-failed-jobs'
+    local url = 'https://api.github.com/repos/'..full_repo..'/actions/runs/'..run_id..'/rerun-failed-jobs'
     local token = os.getenv('GITHUB_TOKEN')
     local op = {
         headers = {
@@ -62,8 +62,10 @@ end
 
 function webhook_handler(req)
     local job = req:json()
-    if is_job_failed(job) and needs_restart(job.workflow_job.run_id) then
-        fiber.create(function() re_run_failed_jobs(job.workflow_job.run_id) end)
+    local run_id = job.workflow_job.run_id
+    local full_repo = job.repository.full_name
+    if is_job_failed(job) and needs_restart(run_id) then
+        fiber.create(function() re_run_failed_jobs(full_repo, run_id) end)
     end
     return { status = 200 }
 end
