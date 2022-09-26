@@ -58,6 +58,20 @@ local function re_run_failed_jobs(full_repo, run_id)
     local res = client:request('POST', url, '', op)
     log.info('Api call for re-running '..run_id..' job finished with status '..res.status)
     log.info('Api response body is '..res.body)
+
+    local attempt = 2
+    while attempt < 12 do
+        if res.status == 403 then
+            log.info('Unable to re-run, wait for 60 second to retry. Attempt #'..attempt)
+            fiber.sleep(60)
+            local res = client:request('POST', url, '', op)
+            log.info('Api call for re-running '..run_id..' job finished with status '..res.status)
+            log.info('Api response body is '..res.body)
+            attempt = attempt + 1
+        else
+            attempt = 12
+        end
+    end
 end
 
 function webhook_handler(req)
