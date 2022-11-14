@@ -1,14 +1,15 @@
-name: Deploy to Dokku
+name: Deploy to Dokku Dev
 
 on:
+  workflow_dispatch:
   push:
-    branches:
+    branches-ignore:
       - 'master'
     paths-ignore:
       - '**/*.md'
       - 'docs/**'
       - '.gitignore'
-  workflow_dispatch:
+
 jobs:
   deploy:
     runs-on: ubuntu-20.04-self-hosted
@@ -21,6 +22,6 @@ jobs:
         uses: NickVolynkin/dokku-deploy-github-action@allow-multiple-deployments
         with:
             ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-            dokku-host: job-re-runner.tarantool.io
-            app-name: job-re-runner
+            dokku-host: job-re-runner-dev.tarantool.io
+            app-name: job-re-runner-dev
             git-push-flags: '--force'
