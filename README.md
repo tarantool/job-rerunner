@@ -274,3 +274,96 @@ failed:
 ```
 
 </details>
+
+
+---
+## Logic preview
+
+```mermaid
+graph TD
+    A[WORKFLOW DOKKU] -->|Deploy to Dokku| B(activate tarantool instance 'job rerunner')
+    B --> C[Runs function 'webhook_handler', a function that decides <br />whether to restart jobs or not]
+    C -->|perform check 1| D{needs_restart?}
+    C -->|perform check 2| E{is_job_failed?}
+    D --> |True| F
+    E --> |True| F[run function re_run_failed_jobs <br/> and return status 200]
+    D --> |False| G
+    E --> |False| G[return status 200]
+```
+
+needs_restart()
+```mermaid
+graph TD
+    A[needs_restart function] -->|accept job_id| B{check tarantool space 'jobs' is job exist?}
+    B --> |true| C{check it's count < 3}
+    B --> |false| D[insert into space <br/> new data about job and return False]
+    C --> E[increment it's count and return True]
+```
+
+is_job_failed()
+```mermaid
+graph TD
+    A[is_job_failed function] -->|accept some data - lua-table| B{check incoming data type,<br/> is incoming data type is 'table'}
+    B --> |true| C{check if data.workflow_job is 'table' type}
+    B --> |false| D[return False]
+    C --> |true|E[return boolean result <br/> of checking workflow_job.conclusion == 'failure']
+    C --> |false|F[return False]
+```
+
+re_run_failed_jobs()
+```mermaid
+graph TD
+    A[re_run_failed_jobs function] -->|accept repo address and run_id| B[send post-request to rerun 'run' and set attempts = 1]
+    B --> B[while attempts < 12]
+    B --> |true| C{if request status equal to 403}
+    B --> |false| End
+    C --> |true| D[fiber.sleep for 60 seconds <br/> then send request to rerun and 1 to attempts]
+    D --> End
+```
+
+>>>>>>> 8e3a554 (docs: add example of webhook payload)
+
+---
+## Logic preview
+
+```mermaid
+graph TD
+    A[WORKFLOW DOKKU] -->|Deploy to Dokku| B(activate tarantool instance 'job rerunner')
+    B --> C[Runs function 'webhook_handler', a function that decides <br />whether to restart jobs or not]
+    C -->|perform check 1| D{needs_restart?}
+    C -->|perform check 2| E{is_job_failed?}
+    D --> |True| F
+    E --> |True| F[run function re_run_failed_jobs <br/> and return status 200]
+    D --> |False| G
+    E --> |False| G[return status 200]
+```
+
+needs_restart()
+```mermaid
+graph TD
+    A[needs_restart function] -->|accept job_id| B{check tarantool space 'jobs' is job exist?}
+    B --> |true| C{check it's count < 3}
+    B --> |false| D[insert into space <br/> new data about job and return False]
+    C --> E[increment it's count and return True]
+```
+
+is_job_failed()
+```mermaid
+graph TD
+    A[is_job_failed function] -->|accept some data - lua-table| B{check incoming data type,<br/> is incoming data type is 'table'}
+    B --> |true| C{check if data.workflow_job is 'table' type}
+    B --> |false| D[return False]
+    C --> |true|E[return boolean result <br/> of checking workflow_job.conclusion == 'failure']
+    C --> |false|F[return False]
+```
+
+re_run_failed_jobs()
+```mermaid
+graph TD
+    A[re_run_failed_jobs function] -->|accept repo address and run_id| B[send post-request to rerun 'run' and set attempts = 1]
+    B --> B[while attempts < 12]
+    B --> |true| C{if request status equal to 403}
+    B --> |false| End
+    C --> |true| D[fiber.sleep for 60 seconds <br/> then send request to rerun and 1 to attempts]
+    D --> End
+```

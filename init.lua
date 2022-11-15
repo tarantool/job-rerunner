@@ -46,6 +46,7 @@ local function re_run_failed_jobs(full_repo, run_id)
     fiber.sleep(5)
     local url = 'https://api.github.com/repos/'..full_repo..'/actions/runs/'..run_id..'/rerun-failed-jobs'
     local token = os.getenv('GITHUB_TOKEN')
+    local attempt = 0
     local op = {
         headers = {
             ['User-Agent'] = 'Tarantool-Re-Runner',
@@ -58,13 +59,26 @@ local function re_run_failed_jobs(full_repo, run_id)
     local res = client:request('POST', url, '', op)
     log.info('Api call for re-running '..run_id..' job finished with status '..res.status)
     log.info('Api response body is '..res.body)
+    attempt = attempt + 1
+
+
+    while attempt < 12 do
+        if res.status == 403 then
+            log.info('Unable to re-run, wait for 60 second to retry. Attempt #'..attempt)
+            fiber.sleep(60)
+            local res = client:request('POST', url, '', op)
+            log.info('Api call for re-running '..run_id..' job finished with status '..res.status)
+            log.info('Api response body is '..res.body)
+            attempt = attempt + 1
+        end
+    end
 end
 
 function webhook_handler(req)
     local job = req:json()
     local run_id = job.workflow_job.run_id
     local full_repo = job.repository.full_name
-    if is_job_failed(job) and needs_restart(run_id) then
+    if needs_restart(run_id) and is_job_failed(job) then
         fiber.create(function() re_run_failed_jobs(full_repo, run_id) end)
     end
     return { status = 200 }
