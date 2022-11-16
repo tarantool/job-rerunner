@@ -63,7 +63,10 @@ local function re_run_failed_jobs(full_repo, run_id)
 
 
     while attempt < 12 do
-        if res.status == 403 then
+        if res.status == 404 then
+            log.info('Unable to reach repository breaking retry process')
+            break
+        elseif res.status == 403 then
             log.info('Unable to re-run, wait for 60 second to retry. Attempt #'..attempt)
             fiber.sleep(60)
             local res = client:request('POST', url, '', op)
@@ -78,9 +81,10 @@ function webhook_handler(req)
     local job = req:json()
     local run_id = job.workflow_job.run_id
     local full_repo = job.repository.full_name
-    if needs_restart(run_id) and is_job_failed(job) then
+    if if_restart = needs_restart(run_id) and is_failed = is_job_failed(job) then
         fiber.create(function() re_run_failed_jobs(full_repo, run_id) end)
     end
+    log.info('needs_restart equal to %s and is_job_failed equal to %s'.format(if_restart, is_failed)
     return { status = 200 }
 end
 
