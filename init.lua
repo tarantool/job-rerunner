@@ -4,17 +4,28 @@ local json = require('json')
 local fiber = require('fiber')
 local log = require('log')
 
+
 box.cfg({
     memtx_dir='db',
     wal_dir='db'
 })
 box.once('migration', function()
+    if type(box.space.jobs) == 'table' then
+        box.space.jobs:drop()
+    end
+
    jobs = box.schema.space.create('jobs')
-   jobs:format({{name = 'id', type = 'unsigned'},
+   jobs:format({{name = 'run_id', type = 'unsigned'},
+                {name = 'run_attempt', type = 'unsigned'},
+                {name = 'run_status', type = 'string'},
+                {name = 'run_conclusion', type = 'string'},
+                {name = 'job_id', type = 'unsigned'},
+                {name = 'job_status', type = 'string'},
+                {name = 'job_conclusion', type = 'string'},
                 {name = 'count', type = 'unsigned'},
                 {name = 'fixed', type = 'boolean'}})
    jobs:create_index('primary', {unique = true,
-                                 parts = {'id'}})
+                                 parts = {'job_id'}})
    box.schema.user.grant('guest','read,write,create','universe')
 end)
 
@@ -28,7 +39,7 @@ local function is_job_failed(data)
     return false
 end
 
-local function needs_restart(job_id)
+local function needs_restart(run_id, run_attempt, run_status, run_conclusion, job_id, job_status, job_conclusion)
     local job = box.space.jobs:get({job_id})
     if job then
         if job.count < 3 then
@@ -36,7 +47,8 @@ local function needs_restart(job_id)
             return true
         end
     else
-        box.space.jobs:insert({job_id, 1, false})
+        box.space.jobs:insert({run_id, run_attempt, run_status, run_conclusion, job_id, job_status, job_conclusion, 1, false})
+        log.info('From payload we have got job with id '..job_id..' with status '..job_status..' and conclusion is '..job_conclusion..' from run with id '..run_id..'run status is '..run_status..' and run conclusion is '..run_conclusion)
         return true
     end
     return false
@@ -81,10 +93,22 @@ function webhook_handler(req)
     local job = req:json()
     local run_id = job.workflow_job.run_id
     local full_repo = job.repository.full_name
-    if if_restart = needs_restart(run_id) and is_failed = is_job_failed(job) then
+    for job in job.workflow_job
+    do
+        local job_id = job.workflow_job.job_id
+        local run_attempt = job.workflow_job.run_attempt
+        local run_status = job.workflow_job.status
+        local run_conclusion = job.workflow_job.conclusion
+        local job_status = job.workflow_job.steps.status
+        local job_conclusion = job.workflow_job.steps.conclusion
+        local if_restart = needs_restart(run_id, run_attempt, run_status, run_conclusion, job_id, job_status, job_conclusion)
+    end
+    local is_failed = is_job_failed(job)
+    log.info(string.format('needs_restart equal to '..tostring(if_restart)..' and is_job_failed equal to '..tostring(is_failed)))
+
+    if if_restart and is_failed then
         fiber.create(function() re_run_failed_jobs(full_repo, run_id) end)
     end
-    log.info('needs_restart equal to %s and is_job_failed equal to %s'.format(if_restart, is_failed)
     return { status = 200 }
 end
 
