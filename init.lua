@@ -3,6 +3,7 @@ local client = require('http.client').new()
 local json = require('json')
 local fiber = require('fiber')
 local log = require('log')
+local max_attempts = 4
 
 box.cfg({
     memtx_dir='db',
@@ -18,31 +19,11 @@ box.once('migration', function()
    box.schema.user.grant('guest','read,write,create','universe')
 end)
 
-local function is_job_failed(data)
-    if type(data) == 'table' then
-        local workflow_job = data.workflow_job
-        if type(workflow_job) == 'table' then
-            return workflow_job.conclusion == 'failure'
-        end
-    end
-    return false
-end
 
-local function needs_restart(job_id)
-    local job = box.space.jobs:get({job_id})
-    if job then
-        if job.count < 3 then
-            box.space.jobs:update(job_id, {{'+', 'count', 1}})
-            return true
-        end
-    else
-        box.space.jobs:insert({job_id, 1, false})
-        return true
-    end
-    return false
-end
-
-local function re_run_failed_jobs(full_repo, run_id)
+--- Send a GitHub API request to restart a workflow that has
+-- one or more failed jobs.
+-- @see https://docs.github.com/en/actions/managing-workflow-runs/re-running-workflows-and-jobs
+local function re_run_failed_workflow(full_repo, run_id)
     fiber.sleep(5)
     local url = 'https://api.github.com/repos/'..full_repo..'/actions/runs/'..run_id..'/rerun-failed-jobs'
     local token = os.getenv('GITHUB_TOKEN')
@@ -56,20 +37,82 @@ local function re_run_failed_jobs(full_repo, run_id)
         verify_peer = false,
     }
     local res = client:request('POST', url, '', op)
-    log.info('Api call for re-running '..run_id..' job finished with status '..res.status)
+    log.info('Api call for re-running '..run_id..' run finished with status '..res.status)
     log.info('Api response body is '..res.body)
 end
 
+
+--- Handle an incoming webhook from GitHub.
+-- @see https://docs.github.com/en/developers/webhooks-and-events/webhooks/about-webhooks
 function webhook_handler(req)
-    local job = req:json()
-    local run_id = job.workflow_job.run_id
-    local full_repo = job.repository.full_name
-    if is_job_failed(job) and needs_restart(run_id) then
-        fiber.create(function() re_run_failed_jobs(full_repo, run_id) end)
+    local payload = req:json()
+    if payload.workflow_job == nil then
+        log.error('Empty payload')
+        return { status = 204 }
     end
-    return { status = 200 }
+    if payload.workflow_job.run_attempt >= max_attempts then
+        log.info('Attempt >= '..max_attempts..', no action needed')
+        return { status = 204 }
+    end
+    local workflow_run_id = payload.workflow_job.run_id
+    local full_repo = payload.repository.full_name
+
+    describe(payload)
+
+    if payload.action == 'queued' then
+        local workflow_record = box.space.jobs:get({ workflow_run_id })
+        if workflow_record then
+            box.space.jobs:update(workflow_run_id, { { '+', 'count', 1}})
+        else
+            box.space.jobs:insert({ workflow_run_id, 1, true})
+        end
+        workflow_record = box.space.jobs:get({ workflow_run_id })
+        log.info('Job queued in workflow '..workflow_run_id..': '..tostring(workflow_record))
+        return { status = 202 }
+    elseif payload.action == 'in_progress' then
+        return { status = 202 }
+    elseif payload.action == 'completed' then
+        local workflow_record = box.space.jobs:get({ workflow_run_id })
+        if workflow_record then
+            box.space.jobs:update(workflow_run_id, { { '-', 'count', 1}})
+            if payload.workflow_job.conclusion == 'failure' then
+                box.space.jobs:update(workflow_run_id, { { '=', 'fixed', false}})
+            end
+
+            workflow_record = box.space.jobs:get({ workflow_run_id })
+            log.info('Job completed in workflow '..workflow_run_id..': '..tostring(workflow_record))
+            if workflow_record.count == 0 then
+                box.space.jobs:delete({ workflow_run_id })
+                if workflow_record.fixed then
+                    return { status = 200 }
+                else
+                    re_run_failed_workflow(full_repo, workflow_run_id)
+                    log.info('Rerunning workflow with run_id '..workflow_run_id..
+                        ' the current count of jobs in matrix is '..workflow_record.count..
+                        ' and fixed equal to '..tostring(workflow_record.fixed))
+                    return { status = 201 }
+                end
+            else
+                return { status = 202 }
+            end
+        else
+            return { status = 404 }
+        end
+    end
 end
 
+--- Describing incoming payload to give information in log about it.
+--
+function describe(payload)
+    local run_id = payload.workflow_job.run_id
+    if payload.workflow_job.conclusion ~= nil then
+        log.info('Workflow '..run_id..', job '..payload.workflow_job.name..'#'..payload.workflow_job.run_attempt..
+            ' is '..payload.workflow_job.status..' as '..payload.workflow_job.conclusion)
+    else
+        log.info('Workflow '..run_id..', job '..payload.workflow_job.name..'#'..payload.workflow_job.run_attempt..
+            ' is '..payload.workflow_job.status)
+    end
+end
 
 function list_handler(req)
     return {

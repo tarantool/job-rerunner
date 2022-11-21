@@ -274,3 +274,14 @@ failed:
 ```
 
 </details>
+
+## Status codes
+Job rerunner returns some status code while working on payload from GitHub.
+
+|     | Result     | Meaning                                                                  |
+|-----|------------|--------------------------------------------------------------------------|
+| 204 | No Content | Got empty payload or overall run attempts more or equal to 4. No action. |
+| 200 | OK         | Final job was completed, but no action is required.                      |
+| 201 | Created    | Final job was completed, restarting the workflow.                        |
+| 202 | Accepted   | Recorded the queued or completed jobs and waiting for results.           |
+| 404 | Error      | Job action is 'completed', but there's no previous record about it.      |
