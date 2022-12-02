@@ -4,6 +4,7 @@ local json = require('json')
 local fiber = require('fiber')
 local log = require('log')
 local max_attempts = 4
+local no_retry_list = os.getenv("NO_RETRY_LIST")
 
 box.cfg({
     memtx_dir='db',
@@ -41,11 +42,26 @@ local function re_run_failed_workflow(full_repo, run_id)
     log.info('Api response body is '..res.body)
 end
 
+--- Check if the table has the given value
+local function check_value(table, value)
+    for k, v in ipairs(table) do
+        if v == value then
+            return true
+        end
+    end
+    return false
+end
 
 --- Handle an incoming webhook from GitHub.
 -- @see https://docs.github.com/en/developers/webhooks-and-events/webhooks/about-webhooks
 function webhook_handler(req)
     local payload = req:json()
+    local payload_sender = payload.sender.login
+    local no_retry = no_retry_list:split(",")
+    if check_value(no_retry, payload_sender) then
+        log.error('Workflow by '..payload_sender..' is not allowed to rerun!')
+        return { status = 204 }
+    end
     if payload.workflow_job == nil then
         log.error('Empty payload')
         return { status = 204 }
