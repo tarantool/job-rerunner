@@ -20,6 +20,8 @@ box.once('migration', function()
    box.schema.user.grant('guest','read,write,create','universe')
 end)
 
+local stable_branches = {'master', '2.11', '2.10'}
+
 
 --- Send a GitHub API request to restart a workflow that has
 -- one or more failed jobs.
@@ -102,11 +104,13 @@ function webhook_handler(req)
                 if workflow_record.fixed then
                     return { status = 200 }
                 else
-                    re_run_failed_workflow(full_repo, workflow_run_id)
-                    log.info('Rerunning workflow with run_id '..workflow_run_id..
-                        ' the current count of jobs in matrix is '..workflow_record.count..
-                        ' and fixed equal to '..tostring(workflow_record.fixed))
-                    return { status = 201 }
+                    if check_value(stable_branches, payload.workflow_job.head_branch) then
+                        re_run_failed_workflow(full_repo, workflow_run_id)
+                        log.info('Rerunning workflow with run_id '..workflow_run_id..
+                            ' the current count of jobs in matrix is '..workflow_record.count..
+                            ' and fixed equal to '..tostring(workflow_record.fixed))
+                        return { status = 201 }
+                    end
                 end
             else
                 return { status = 202 }
