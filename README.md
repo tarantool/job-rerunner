@@ -39,12 +39,14 @@ Provide the SSH key for access to Dokku in the `SSH_PRIVATE_KEY` secret.
 
 ## Environment variables
 
-| Variable      | Default | Meaning                                                   |
-|---------------|---------|-----------------------------------------------------------|
-| RUN_ATTEMPTS  | 4       | Number of attempts to run a specific workflow job.        |
-| REPO_BRANCHES | master  | Branches that require automatic restart of workflow jobs. |
+| Variable        | Default | Meaning                                                                       |
+|-----------------|---------|-------------------------------------------------------------------------------|
+| RUN_ATTEMPTS    | 4       | Number of attempts to run a specific workflow job.                            |
+| REPO_BRANCHES   | master  | Branches that require automatic restart of workflow jobs.                     |
+| GITHUB_TOKEN    |         | Access token for authentication to GitHub when using the GitHub API.          |
+| GITHUB_SIGN_KEY |         | Secret token for generating a hash function for the checking GitHub requests. |
 
-## Updating GitHub token
+## Updating GitHub token and GitHub Sign Key
 
 To update the token or change the user which will restart workflows:
 
@@ -63,11 +65,18 @@ To update the token or change the user which will restart workflows:
     DOKKU_PROXY_PORT_MAP:     http:80:5000 https:443:5000
     DOKKU_PROXY_SSL_PORT:     443
     GITHUB_TOKEN:             <old_token_value>
+    GITHUB_SIGN_KEY:          <old_github_signature>
     GIT_REV:                  e4da2ec3daf9366236da98b5ba06ecbe4d645365
 
     # dokku config:set job-re-runner GITHUB_TOKEN=<value>
     -----> Setting config vars
        GITHUB_TOKEN:  <value>
+    -----> Restarting app job-re-runner
+    ...
+
+    # dokku config:set job-re-runner GITHUB_SIGN_KEY=<value>
+    -----> Setting config vars
+       GITHUB_SIGN_KEY:  <value>
     -----> Restarting app job-re-runner
     ...
     ```
@@ -280,6 +289,7 @@ Job rerunner returns some status code while working on payload from GitHub.
 | 200 | OK         | Final job was completed, but no action is required.                                               |
 | 201 | Created    | Final job was completed, restarting the workflow.                                                 |
 | 202 | Accepted   | Recorded the queued or completed jobs and waiting for results.                                    |
+| 403 | Forbidden  | Request headers must contain `X-Hub-Signature-256` with correct value.                            |
 | 404 | Error      | Job action is 'completed', but there's no previous record about it.                               |
 
 ## Excluding usernames from retrying

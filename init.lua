@@ -1,11 +1,14 @@
 local httpd = require('http.server')
+local crypto = require('crypto')
 local client = require('http.client').new()
 local json = require('json')
 local fiber = require('fiber')
 local log = require('log')
+local utf8 = require('utf8')
 local run_attempts = os.getenv("RUN_ATTEMPTS") or 4
 local repo_branches = os.getenv("REPO_BRANCHES") or 'master'
 local no_retry_list = os.getenv("NO_RETRY_LIST")
+local github_signature = os.getenv("GITHUB_SIGN_KEY")
 
 box.cfg({
     memtx_dir='db',
@@ -53,10 +56,28 @@ local function check_value(table, value)
     return false
 end
 
+--- Verify that the request was sent from GitHub by validating SHA256.
+-- Returns `true` if the request is authorized, otherwise `false`.
+-- @see https://docs.github.com/en/webhooks-and-events/webhooks/securing-your-webhooks
+local function is_verified_signature(body, signature)
+    if not signature then
+        return false
+    end
+    local sign = 'sha256=' .. crypto.hmac.sha256_hex(github_signature, body)
+    if utf8.cmp(signature, sign) == 0 then
+        return true
+    end
+    return false
+end
+
 --- Handle an incoming webhook from GitHub.
 -- @see https://docs.github.com/en/developers/webhooks-and-events/webhooks/about-webhooks
 function webhook_handler(req)
-    local payload = req:json()
+    local body = req:read()
+    if not is_verified_signature(body, req.headers['x-hub-signature-256']) then
+        return {status = 403}
+    end
+    local payload = json.decode(body)
     local payload_sender = payload.sender.login
     local no_retry = no_retry_list:split(",")
     if check_value(no_retry, payload_sender) then
