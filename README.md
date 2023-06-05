@@ -39,9 +39,10 @@ Provide the SSH key for access to Dokku in the `SSH_PRIVATE_KEY` secret.
 
 ## Environment variables
 
-| Variable     | Default | Meaning                                            |
-|--------------|---------|----------------------------------------------------|
-| RUN_ATTEMPTS | 4       | Number of attempts to run a specific workflow job. |
+| Variable      | Default | Meaning                                                   |
+|---------------|---------|-----------------------------------------------------------|
+| RUN_ATTEMPTS  | 4       | Number of attempts to run a specific workflow job.        |
+| REPO_BRANCHES | master  | Branches that require automatic restart of workflow jobs. |
 
 ## Updating GitHub token
 
