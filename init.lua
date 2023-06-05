@@ -4,6 +4,7 @@ local json = require('json')
 local fiber = require('fiber')
 local log = require('log')
 local run_attempts = os.getenv("RUN_ATTEMPTS") or 4
+local repo_branches = os.getenv("REPO_BRANCHES") or 'master'
 local no_retry_list = os.getenv("NO_RETRY_LIST")
 
 box.cfg({
@@ -19,8 +20,6 @@ box.once('migration', function()
                                  parts = {'id'}})
    box.schema.user.grant('guest','read,write,create','universe')
 end)
-
-local stable_branches = {'master', '2.11', '2.10'}
 
 
 --- Send a GitHub API request to restart a workflow that has
@@ -104,7 +103,7 @@ function webhook_handler(req)
                 if workflow_record.fixed then
                     return { status = 200 }
                 else
-                    if check_value(stable_branches, payload.workflow_job.head_branch) then
+                    if check_value(repo_branches:split(','), payload.workflow_job.head_branch) then
                         re_run_failed_workflow(full_repo, workflow_run_id)
                         log.info('Rerunning workflow with run_id '..workflow_run_id..
                             ' the current count of jobs in matrix is '..workflow_record.count..
