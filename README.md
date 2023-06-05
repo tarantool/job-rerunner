@@ -37,6 +37,12 @@ Provide the SSH key for access to Dokku in the `SSH_PRIVATE_KEY` secret.
 
 `Procfile` contains the command for running the main process of the application.
 
+## Environment variables
+
+| Variable     | Default | Meaning                                            |
+|--------------|---------|----------------------------------------------------|
+| RUN_ATTEMPTS | 4       | Number of attempts to run a specific workflow job. |
+
 ## Updating GitHub token
 
 To update the token or change the user which will restart workflows:

@@ -3,7 +3,7 @@ local client = require('http.client').new()
 local json = require('json')
 local fiber = require('fiber')
 local log = require('log')
-local max_attempts = 4
+local run_attempts = os.getenv("RUN_ATTEMPTS") or 4
 local no_retry_list = os.getenv("NO_RETRY_LIST")
 
 box.cfg({
@@ -68,8 +68,8 @@ function webhook_handler(req)
         log.error('Empty payload')
         return { status = 204 }
     end
-    if payload.workflow_job.run_attempt >= max_attempts then
-        log.info('Attempt >= '..max_attempts..', no action needed')
+    if payload.workflow_job.run_attempt >= run_attempts then
+        log.info('Attempt >= '..run_attempts..', no action needed')
         return { status = 204 }
     end
     local workflow_run_id = payload.workflow_job.run_id
