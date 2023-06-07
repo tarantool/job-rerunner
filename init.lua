@@ -88,7 +88,7 @@ function webhook_handler(req)
         log.error('Empty payload')
         return { status = 204 }
     end
-    if payload.workflow_job.run_attempt >= run_attempts then
+    if payload.workflow_job.run_attempt >= tonumber(run_attempts) then
         log.info('Attempt >= '..run_attempts..', no action needed')
         return { status = 204 }
     end
